@@ -1,95 +1,68 @@
 # CIP-A106 Lab 03 — TeslaCrypt Ransomware Analysis
 
 **Student:** Loveth Adebayo
-**Course:** CIP-A106 — Malware Analysis | **Date:** 5 October 2026
+**Student ID:** C11_26-EHIT-17323
+**Course:** CIP-A106 — Malware Analysis
+**Lab:** Lab 03 — TeslaCrypt Ransomware Unpacking and Memory Analysis
+**Date:** 5 October 2026
 
 ---
 
-## About
+## Overview
 
-Static and dynamic analysis of a TeslaCrypt-family ransomware sample (`demo1_ransomware.bin`, 368,640 bytes) performed inside an isolated Windows 10 VM with no external network connectivity.
+Static, debugger, and memory analysis of a TeslaCrypt-family ransomware sample (`demo1_ransomware.bin`) inside an isolated Windows 10 VM with no external network connectivity.
 
-**Family attribution:** High confidence (TeslaCrypt)
-**Encryption impact:** Directly observed via dropped ransom note
+Analysis confirmed the sample spawns a randomly-named self-deleting child process, establishes HKCU Run persistence, beacons to six C2 domains via the `/bstr.php` pattern, and drops a ransom note (`RECOVERY.TXT`) with an AES notice, Bitcoin demand, and Tor payment portal.
+
+Family attribution to **TeslaCrypt** is **high confidence**. Sample demonstrated **behavioural polymorphism** — regenerating its persistence key and dropped filename on each execution.
+
+---
+
+## Contents
+
+Lab03/
+├── README.md
+├── CIP_A106_Lab03_Loveth_Adebayo_C11_26-EHIT-17323.pdf
+├── Artifacts/ ← baseline, procmon, fakenet, regshot, memory strings, ransom note
+├── Memory/ ← TeslaCrypt_pid.dmp
+└── Evidence/ ← annotated screenshots (isolation, PEStudio, debugger, memory, cleanup)
+
+text
 
 ---
 
 ## Key Findings
 
-- **PE32 executable**, entropy 7.6291, not UPX-packed → likely custom/commercial crypter
-- **Leaked PDB path:** `E:\Tools\aolfed\release\osc.pdb`
-- **Dropped child process:** `qctmcokxcsuh.exe` (PID 4208) into `C:\Windows\`
-- **Self-deletion:** Sample removes its own on-disk copy after loading into memory
-- **Persistence:** `HKCU\...\Run\gvwfpimqupxl` → `cmd.exe /c start "" "C:\Windows\qctmcokxcsuh.exe"`
-- **C2 beacon:** 6 domains contacted via `/bstr.php` (FakeNet-NG)
-- **Ransom note:** `RECOVERY.txt` with victim ID `B4A3C8C5E7FFC6DB`, AES notice, Bitcoin demand, 3 payment portals, 1 Tor URL
-
----
-
-## IOCs
-
-**C2 Domains (FakeNet):**
-`biocarbon.com.ec`, `imagescroll.com`, `music.mbsaeger.com`, `stacon.eu`, `surrogacyandadoption.com`, `worldisonefamily.info` — all using `/bstr.php`
-
-**Payment Portals (ransom note):**
-`gwe32fdr74bhfsyujb34gfszfv.zatcurr.com`, `tes543berda73i48fsdfsd.keratadze.at`, `tt54rfdjhb34rfbnknaerg.milerteddy.com`, `xlowfznrg4wf7dli.onion`
-
-**Host-Based:**
-`qctmcokxcsuh.exe`, `gvwfpimqupxl`, `RECOVERY.txt`, `B4A3C8C5E7FFC6DB`
-
----
-
-## SHA-256 Hashes
-
-| Artifact | SHA-256 |
+| Attribute | Value |
 |---|---|
-| `demo1_ransomware.bin` | `5343947829609F69E84FE7E8172C38EE018EDE3C9898D4895275F596AC54320D` |
-| `procmon_lab03.PML` | `04499E41B77039B3B60CD98A48CE7434D29731198E0E13F0F683356AE4DF57EE` |
-| `procmon_lab03.csv` | `0AB1C798B21F13DAAB07E8C815972DF60D6DED1F85FE96866D7844CC68D8E356` |
-| `regshot_diff.txt` | `6F5A172FEC2D55399E01F98678739AB9FBB5AA92412144D71B69600BB06D77AA` |
-| `fakenet_console.txt` | `64882D1BB40E6AA0F6B58E5C9CE1ADE23116B1A46A780A6D9291338AA6B09FEA` |
-| `RECOVERY.txt` | `B7A1EA80AE16ED0173A1D475FD7D6E07088C73EC49D6344425D9B6BF0FE78754` |
+| Source SHA-256 | `5343947829609F69E84FE7E8172C38EE018EDE3C9898D4895275F596AC54320D` |
+| Memory dump SHA-256 | `B864303518E9F70A98D5230E2A1B198E6B83B883935B7CB32FB814117E60ABCE` |
+| Source entropy | **7.6291** (packed) |
+| Memory dump entropy | **5.098** (unpacked ✅) |
+| Entry Point | `0x00403C40` |
+| PDB path leaked | `E:\Tools\aolfed\release\osc.pdb` |
+| Persistence (1st run) | `HKCU\...\Run\gvwfpimqupxl` → `qctmcokxcsuh.exe` |
+| Persistence (2nd run) | `HKCU\...\Run\ngctjqrjrvjj` → `jgmuoeuplsyh.exe` |
+| Victim ID | `B4A3C8C5E7FFC6DB` |
 
----
+**C2 domains:** biocarbon.com.ec, imagescroll.com, music.mbsaeger.com, stacon.eu, surrogacyandadoption.com, worldisonefamily.info (all via `/bstr.php`)
 
-## MITRE ATT&CK
-
-| Technique | ID |
-|---|---|
-| Obfuscated Files or Information | T1027 |
-| Virtualization/Sandbox Evasion | T1497 |
-| Registry Run Keys / Startup Folder | T1547.001 |
-| Indicator Removal on Host | T1070 |
-| Web Protocols (C2) | T1071.001 |
-| Data Encrypted for Impact | T1486 |
-| Financial Theft | T1657 |
-| Data from Local System | T1005 |
-
----
-
+**Payment portals:** zatcurr.com, keratadze.at, milerteddy.com, xlowfznrg4wf7dli.onion
 
 ---
 
 ## Tools Used
 
-PEStudio 9.61 · x64dbg (May 27, 2026) · Process Hacker 2.39.124 · FakeNet-NG · Procmon · Regshot 1.9.0
+PEStudio 9.61 · x32dbg · Process Hacker 2.39.124 · OllyDumpEx · FakeNet-NG · Procmon · Regshot 1.9.0 · Sysinternals strings
 
 ---
 
-## Safety
+## Safety Note
 
-All analysis performed inside an isolated Windows 10 VM (Host-Only network, no external connectivity, shared clipboard/drag-drop/folders disabled during execution). **No live malware or raw memory dump is included.**
-
----
-
-## Limitations
-
-- Custom packer not statically unpacked (no unpacked SHA-256)
-- Memory dump acquisition not performed; behaviour demonstrated via runtime tools
-- FakeNet responses synthetic (network isolated)
+All analysis performed inside an isolated Virtual Machine (Host-Only network, clipboard and drag-drop disabled, shared folder removed during execution). No live malware is included; `Memory/TeslaCrypt_pid.dmp` is retained for grading only — do not redistribute.
 
 ---
 
-*CIP-A106 — Malware Analysis · Loveth Adebayo ·
+## Academic Integrity
 
-## Repository Contents
+All observations in the report are traceable to evidence artifacts and screenshots. Hypotheses are clearly labelled as such. No fabricated evidence.
